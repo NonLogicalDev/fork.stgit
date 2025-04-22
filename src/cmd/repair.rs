@@ -4,7 +4,7 @@
 
 use std::rc::Rc;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Ok, Result};
 use bstr::ByteSlice;
 use indexmap::{indexset, IndexSet};
 
@@ -13,7 +13,7 @@ use crate::{
     ext::{CommitExtended, RepositoryExtended},
     patch::PatchName,
     print_info_message, print_warning_message,
-    stack::{InitializationPolicy, Stack, StackAccess, StackStateAccess},
+    stack::{InitializationPolicy, Stack, StackAccess, StackState, StackStateAccess},
 };
 
 pub(super) const STGIT_COMMAND: super::StGitCommand = super::StGitCommand {
@@ -59,11 +59,30 @@ fn make() -> clap::Command {
              valid workflows where git commands are used followed by `stg repair`. For \
              example, new patches can be created by first making commits with a \
              graphical commit tool and then running `stg repair` to convert those \
-             commits into patches.",
+             commits into patches.\
+             \n\
+             3. Lastly there is `stg repair --reset`, using this command will update \
+             the stack head, and will move all patches to unapplied state, at which \
+             point it is possible to reconcile the state by hand either by iteratively \
+             running `stg push --merged` or by scrapping the patches and starting anew \
+             with `stg uncommit`.",
+        )
+        .arg(
+            clap::Arg::new("reset")
+                .long("reset")
+                .help("Reset the stack and mark all patches as unapplied")
+                .action(clap::ArgAction::SetTrue)
         )
 }
 
 fn run(matches: &clap::ArgMatches) -> Result<()> {
+    if matches.get_flag("reset") {
+        return run_repair_reset(matches)
+    }
+    run_repair_auto(matches)
+}
+
+fn run_repair_auto(matches: &clap::ArgMatches) -> Result<()> {
     let repo = gix::Repository::open()?;
     let stack = Stack::current(&repo, InitializationPolicy::RequireInitialized)?;
     let config = repo.config_snapshot();
@@ -72,6 +91,7 @@ fn run(matches: &clap::ArgMatches) -> Result<()> {
             "this branch is protected; modification is not permitted."
         ));
     }
+
 
     let patchname_len_limit = PatchName::get_length_limit(&config);
 
@@ -211,6 +231,46 @@ fn run(matches: &clap::ArgMatches) -> Result<()> {
             Ok(())
         })
         .execute("repair")?;
+
+    Ok(())
+}
+
+
+fn run_repair_reset(matches: &clap::ArgMatches) -> Result<()> {
+    let repo = gix::Repository::open()?;
+    let stack = Stack::current(&repo, InitializationPolicy::RequireInitialized)?;
+    let config = repo.config_snapshot();
+    if stack.is_protected(&config) {
+        return Err(anyhow!(
+            "this branch is protected; modification is not permitted."
+        ));
+    }
+
+    if stack.get_branch_head().id == stack.head().id {
+        print_info_message(matches, &format!("git head already matching stack state, doing nothing"));
+        return Ok(());
+    }
+
+    stack
+        .setup_transaction()
+        .use_index_and_worktree(false)
+        .with_output_stream(get_color_stdout(matches))
+        .transact(|trans| {
+            let commit = trans.stack().get_branch_head().to_owned();
+
+            let stack = trans.stack();
+            let repo = stack.repo;
+            let stack_state_commit = repo
+                .find_reference(stack.get_stack_refname())?
+                .peel_to_commit()
+                .map(Rc::new)?;
+
+            let new_stack_state = StackState::from_commit(trans.stack().repo, &stack_state_commit)?
+                .reset_branch_state(commit, stack_state_commit);
+
+            trans.reset_to_state(new_stack_state)
+        })
+        .execute("repair-rewind")?;
 
     Ok(())
 }
