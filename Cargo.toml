@@ -1,6 +1,6 @@
 [package]
 name = "stgit"
-version = "2.5.3"
+version = "2.5.3-dev01"
 description = "Stack-based patch management for Git"
 edition = "2021"
 rust-version = "1.70"
@@ -60,6 +60,9 @@ thiserror = "~2.0"
 winnow = "0.7.2"
 
 curl = { version = "0.4", optional = true }
+inquire = "0.7.5"
+rand = "0.9.1"
+atty = "0.2.14"
 
 [features]
 default = ["import-url"]
