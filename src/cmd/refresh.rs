@@ -100,6 +100,12 @@ fn make() -> clap::Command {
                 )
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("checked")
+                .long("checked")
+                .help("Interactively validate intentions")
+                .action(clap::ArgAction::SetTrue),
+        )
         .arg(argset::push_conflicts_arg())
         .arg(
             Arg::new("patch")
@@ -194,6 +200,15 @@ fn run(matches: &ArgMatches) -> Result<()> {
         let disallow: Vec<&PatchName> = stack.all_patches().collect();
         PatchName::make("refresh-temp", true, len_limit).uniquify(&allow, &disallow)
     };
+
+    if matches.get_flag("checked") {
+        crate::nl_extensions::validate_refresh_intentions(
+            &repo,
+            &stack,
+            &patchname,
+            Rc::new(stack.repo.find_commit(temp_commit_id)?),
+        )?;
+    }
 
     let stack = stack
         .setup_transaction()

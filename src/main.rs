@@ -14,6 +14,7 @@ mod cmd;
 mod color;
 mod ext;
 mod hook;
+mod nl_extensions;
 mod patch;
 mod signal;
 mod stack;
