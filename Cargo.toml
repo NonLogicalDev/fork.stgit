@@ -60,6 +60,8 @@ thiserror = "~2.0"
 winnow = "0.7.2"
 
 curl = { version = "0.4", optional = true }
+inquire = "0.7.5"
+rand = "0.9.1"
 
 [features]
 default = ["import-url"]

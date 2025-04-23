@@ -111,6 +111,11 @@ impl StupidContext<'_, '_> {
 }
 
 impl StupidContext<'_, '_> {
+    /// Create a new git command (low-level).
+    pub(crate) fn git_cmd(&self) -> Command {
+        self.git()
+    }
+
     /// Apply a patch (diff) to the specified index using `git apply --cached`.
     pub(crate) fn apply_to_index(&self, diff: &BStr) -> Result<()> {
         self.git_in_work_root()?

@@ -100,6 +100,12 @@ fn make() -> clap::Command {
                 )
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("checked")
+            .long("checked")
+            .help("Interactively validate intentions")
+            .action(clap::ArgAction::SetTrue)
+        )
         .arg(argset::push_conflicts_arg())
         .arg(
             Arg::new("patch")
@@ -175,6 +181,15 @@ fn run(matches: &ArgMatches) -> Result<()> {
         matches,
         matches.get_flag("update").then_some(&patchname),
     )?;
+
+    if matches.get_flag("checked") {
+        crate::nl_extensions::validate_refresh_intentions(
+            &repo,
+            &stack,
+            &patchname,
+            tree_id,
+        )?;
+    }
 
     let mut log_msg = "refresh ".to_string();
     let opt_annotate = matches.get_one::<String>("annotate");

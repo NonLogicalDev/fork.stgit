@@ -20,6 +20,7 @@ mod stack;
 mod stupid;
 mod templates;
 mod wrap;
+mod nl_extensions;
 
 use std::{ffi::OsString, fmt::Write as _, io::Write as _, path::PathBuf};
 
