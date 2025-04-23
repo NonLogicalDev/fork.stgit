@@ -90,6 +90,12 @@ fn make() -> clap::Command {
                 .value_parser(clap::value_parser!(PatchName))
                 .conflicts_with("patchname"),
         )
+        .arg(
+            Arg::new("auto")
+                .long("auto")
+                .help("Auto generate patch id for the new patch")
+                .action(clap::ArgAction::SetTrue),
+        )
         .next_help_heading("Refresh Options")
         .arg(
             Arg::new("refresh")
@@ -165,9 +171,20 @@ fn run(matches: &ArgMatches) -> Result<()> {
     statuses.check_conflicts()?;
     stack.check_head_top_mismatch()?;
 
-    let patchname = if let Some(patchname) = matches
-        .get_one::<PatchName>("patchname")
-        .or_else(|| matches.get_one::<PatchName>("name"))
+    // Extract name argument to use as proposed name for auto generation
+    let name_arg = 
+        matches.get_one::<PatchName>("patchname")
+        .or_else(|| matches.get_one::<PatchName>("name"));
+
+    let auto_patch_id = if matches.get_flag("auto") {
+        let proposed_name = name_arg.map(|name| name.to_string());
+        Some(crate::nl_extensions::generate_patch_id(&stack, proposed_name, name_arg.is_none())?)
+    } else {
+        None
+    };
+
+    let patchname = if let Some(patchname) = 
+        auto_patch_id.as_ref().or_else(|| name_arg)
         .cloned()
     {
         if let Some(colliding_patchname) = stack.collides(&patchname) {
