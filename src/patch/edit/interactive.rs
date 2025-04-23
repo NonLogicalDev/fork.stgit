@@ -9,6 +9,8 @@ use std::{
     path::Path,
 };
 
+use crate::nl_extensions::GitDirDataOps;
+
 use anyhow::{anyhow, Context, Result};
 use bstr::BString;
 
@@ -38,19 +40,18 @@ pub(super) fn edit_interactive(
     patch_desc: &EditablePatchDescription,
     config: &gix::config::Snapshot,
 ) -> Result<EditedPatchDescription> {
-    let filename = if patch_desc.diff.is_some() {
+    let filename = config.repo.git_data_file(if patch_desc.diff.is_some() {
         EDIT_FILE_NAME_DIFF
     } else {
         EDIT_FILE_NAME
-    };
-
+    });
     {
-        let file = File::create(filename)?;
+        let file = File::create(&filename)?;
         let mut stream = BufWriter::new(file);
         patch_desc.write(&mut stream)?;
     }
 
-    let buf = call_editor(filename, config)?;
+    let buf = call_editor(&filename, config)?;
     let edited_desc = EditedPatchDescription::try_from(buf.as_slice())?;
     Ok(edited_desc)
 }

@@ -18,6 +18,8 @@ use crate::{
     stupid::Stupid,
 };
 
+use crate::nl_extensions::GitDirDataOps;
+
 pub(super) const STGIT_COMMAND: super::StGitCommand = super::StGitCommand {
     name: "rebase",
     category: super::CommandCategory::StackManipulation,
@@ -367,13 +369,14 @@ fn interactive_pushback(
         return Ok(());
     }
 
-    let filename = ".stgit-rebase-interactive.txt";
+    let filename = repo
+        .git_data_file(".stgit-rebase-interactive.txt");
     std::fs::write(
-        filename,
+        &filename,
         make_instructions_template(&stack, previously_applied),
     )?;
 
-    let buf = patchedit::call_editor(filename, config)?;
+    let buf = patchedit::call_editor(&filename, config)?;
     let buf = buf
         .to_str()
         .map_err(|_| anyhow!("`{filename}` is not valid UTF-8"))?;

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -14,6 +15,21 @@ use crate::stack::Stack;
 use crate::stack::StackAccess;
 use crate::stack::StackStateAccess;
 use crate::stupid::Stupid;
+
+pub trait GitDirDataOps {
+    fn git_data_file(&self, path: &str) -> String;
+}
+
+impl GitDirDataOps for gix::Repository {
+    fn git_data_file(&self, path: &str) -> String {
+        // If STG_EDIT_IN_CWD is set return path as is.
+        let path = match std::env::var("STG_EDIT_IN_CWD") {
+            Ok(_) => PathBuf::from(path),
+            Err(_) => self.path().join(path),
+        };
+        path.to_str().unwrap().to_string()
+    }
+}
 
 pub(crate) fn generate_and_edit_patch_id(stack: &Stack) -> Result<PatchName> {
     const DEFAULT_PATCH_PREFIX: &str = "misc";
@@ -50,11 +66,11 @@ pub(crate) fn generate_and_edit_patch_id(stack: &Stack) -> Result<PatchName> {
     ))?)
 }
 
-pub(crate) fn validate_refresh_intentions<'repo>(
+pub(crate) fn validate_refresh_intentions(
     repo: &gix::Repository,
     stack: &Stack,
     target_patch: &PatchName,
-    temp_commit: Rc<gix::Commit<'repo>>,
+    temp_commit: Rc<gix::Commit>,
 ) -> Result<()> {
     let stupid = repo.stupid();
 
@@ -71,7 +87,7 @@ pub(crate) fn validate_refresh_intentions<'repo>(
         .find_reference(stack.get_stack_refname())?
         .peel_to_commit()?;
     let target_patch_description_raw = target_patch_commit.message()?.title.to_string();
-    let target_patch_description = target_patch_description_raw.trim_ascii_end();
+    let target_patch_description = target_patch_description_raw.trim_end();
 
     let mut diff_output_old = stupid.diff_tree_files_status(
         /* tree1 */ target_patch_parent_tree_id,
@@ -172,24 +188,17 @@ fn inquire_default_render_config<'a>() -> RenderConfig<'a> {
     } else {
         RenderConfig::empty()
     };
-    cfg
-        .with_prompt_prefix(Styled::new(":?").with_style_sheet(cfg.prompt_prefix.style))
-        .with_answered_prompt_prefix(Styled::new(":>").with_style_sheet(cfg.answered_prompt_prefix.style))
+    cfg.with_prompt_prefix(Styled::new(":?").with_style_sheet(cfg.prompt_prefix.style))
+        .with_answered_prompt_prefix(
+            Styled::new(":>").with_style_sheet(cfg.answered_prompt_prefix.style),
+        )
 }
 
 fn inquire_confirm(prompt: &str) -> Result<bool> {
-    // Check if TTY is available
-    if atty::is(atty::Stream::Stdout) {
-        let res = inquire::Select::new(prompt, vec!["Yes", "No"])
-            .with_render_config(inquire_default_render_config())
-            .prompt()?;
-        Ok(res == "Yes")
-    } else {
-        let res = inquire::Confirm::new(prompt)
-            .with_render_config(inquire_default_render_config())
-            .prompt()?;
-        Ok(res)
-    }
+    let res = inquire::Confirm::new(prompt)
+        .with_render_config(inquire_default_render_config())
+        .prompt()?;
+    Ok(res)
 }
 
 fn inquire_ask(prompt: &str, default: Option<&str>) -> Result<String> {
@@ -200,6 +209,36 @@ fn inquire_ask(prompt: &str, default: Option<&str>) -> Result<String> {
             .prompt()?;
         Ok(res)
     } else {
-        default.map(str::to_string).ok_or(anyhow!("no default provided"))
+        default
+            .map(str::to_string)
+            .ok_or(anyhow!("no default provided"))
     }
 }
+
+// fn example_fn() -> Result<()> {
+//     // Rust's Core reference types:
+//     use std::rc::Rc;
+//     use std::rc::Weak;
+
+//     use std::sync::Arc;
+//     use std::sync::Weak;
+
+//     use std::cell::Cell;
+//     use std::cell::RefCell;
+
+//     use std::boxed::Box;
+
+//     use std::pin::Pin;
+//     use std::ptr::NonNull;
+//     use std::ptr::Unique;
+//     use std::borrow::Cow;
+
+//     use std::ops::Deref;
+
+
+//     use std::marker::PhantomData;
+//     use std::marker::PhantomPinned;
+
+
+//     Ok(())
+// }

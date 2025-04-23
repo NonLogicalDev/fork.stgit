@@ -3,6 +3,7 @@
 //! `stg spill` implementation.
 
 use std::path::PathBuf;
+use std::fmt::Write;
 
 use anyhow::Result;
 use clap::{Arg, ArgMatches};
@@ -13,6 +14,7 @@ use crate::{
     ext::{CommitExtended, RepositoryExtended},
     stack::{InitializationPolicy, Stack, StackStateAccess},
     stupid::Stupid,
+    patch::PatchName,
 };
 
 pub(super) const STGIT_COMMAND: super::StGitCommand = super::StGitCommand {
@@ -137,3 +139,31 @@ fn run(matches: &ArgMatches) -> Result<()> {
 
     Ok(())
 }
+
+fn make_interactive_template(stack: &Stack, patch_name: &PatchName) -> Result<String> {
+    let mut template = String::with_capacity(4096);
+    let stupid = stack.repo.stupid();
+
+    // Find the paths in the requested patch
+    let patch_commit = stack.get_patch_commit(patch_name);
+    let patch_commit_tree = patch_commit.tree_id()?.detach();
+    let patch_commit_parent_tree = patch_commit.get_parent_commit()?.tree_id()?.detach();
+
+    let patch_files = stupid.diff_tree_files(
+        /* tree1 */ patch_commit_parent_tree,
+        /* tree2 */ patch_commit_tree,
+    )?;
+
+    for patchname in  patch_files.iter() {
+        writeln!(&mut template, "spill {}", patchname.to_string_lossy().to_string()).unwrap();
+    }
+    Ok(template)
+}
+
+// fn example_fn() -> Result<()> {
+//     let mut out = String::new();
+//     write!(out, "Hello, world!").unwrap();
+//     out.write_fmt(args);
+    
+//     Ok(())
+// }
