@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -142,6 +143,25 @@ pub(crate) fn validate_refresh_intentions(
     }
 
     Ok(())
+}
+
+
+// ----------------------------------------------------------------------------
+// Git Helpers / Extensions
+// ----------------------------------------------------------------------------
+
+pub trait GitNLExtensions {
+    fn git_data_file(&self, path: &str) -> PathBuf;
+}
+
+impl GitNLExtensions for gix::Repository {
+    fn git_data_file(&self, path: &str) -> PathBuf {
+        // If STG_EDIT_IN_CWD is set return path as is.
+        match std::env::var("STG_EDIT_IN_CWD") {
+            Ok(_) => PathBuf::from(path),
+            Err(_) => self.path().join(path),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
