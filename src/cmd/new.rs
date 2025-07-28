@@ -93,7 +93,14 @@ fn make() -> clap::Command {
         .arg(
             Arg::new("auto")
                 .long("auto")
-                .help("Auto generate patch id for the new patch")
+                .help("Auto generate patch name for the new in <topic>@<random_id> format")
+                .long_help(
+                    "Automatically generate patch name in <topic>@<random_id> format. \
+                    The <random_id> is a random alphanumeric string of 5 characters. \
+                    If [patchname] is provided, it will be used as the <topic>. \
+                    If [patchname] is not provided, the <topic> determined from the last patch in the stack. \
+                    If terminal is interactive and [patchname] is not provided, the <topic> will be asked for interactively.",
+                )
                 .action(clap::ArgAction::SetTrue),
         )
         .next_help_heading("Refresh Options")

@@ -16,6 +16,7 @@ pub(crate) mod diff;
 pub(crate) mod edit;
 pub(crate) mod email;
 pub(crate) mod export;
+pub(crate) mod export_forest;
 pub(crate) mod files;
 pub(crate) mod float;
 pub(crate) mod fold;
@@ -93,6 +94,7 @@ pub(crate) const STGIT_COMMANDS: &[StGitCommand] = &[
     edit::STGIT_COMMAND,
     email::STGIT_COMMAND,
     export::STGIT_COMMAND,
+    export_forest::STGIT_COMMAND,
     files::STGIT_COMMAND,
     float::STGIT_COMMAND,
     fold::STGIT_COMMAND,
